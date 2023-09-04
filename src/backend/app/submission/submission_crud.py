@@ -431,6 +431,27 @@ def download_submission_for_project(db, project_id):
     return final_zip_file_path
 
 
+async def get_odk_user_info(db: Session, project_id):
+    project = project_crud.get_project(db, project_id)
+    odkid = project.odkid
+    from ..central import central_crud
+
+    # Get odk credentials from project.
+    odk_credentials = {
+        "odk_central_url": project.odk_central_url,
+        "odk_central_user": project.odk_central_user,
+        "odk_central_password": project.odk_central_password,
+    }
+
+    odk_credentials = project_schemas.ODKCentral(**odk_credentials)
+
+    odk_project = central_crud.get_odk_project(odk_credentials)
+    filters = {
+        "$select":"username"
+    }
+    result = odk_project.getAllSubmissions(odkid, None, filters)
+    return result
+
 async def get_all_submissions(db: Session, project_id):
     project_info = project_crud.get_project(db, project_id)
 
