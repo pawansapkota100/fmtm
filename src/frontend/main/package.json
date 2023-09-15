@@ -92,6 +92,8 @@
     },
     "setupFilesAfterEnv": [
       "./setupTests.js"
-    ]
+    ],
+    "transformIgnorePatterns": ["<rootDir>/node_modules/"]
+
   }
 }

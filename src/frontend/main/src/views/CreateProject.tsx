@@ -8,6 +8,7 @@ import FormSelection from '../components/createproject/FormSelection';
 import DefineTasks from '../components/createproject/DefineTasks';
 import { CreateProjectActions } from '../store/slices/CreateProjectSlice';
 import DataExtract from '../components/createproject/DataExtract';
+import NavigationButton from '../components/createproject/NavigationButton';
 
 const CreateProject: React.FC = () => {
   const [geojsonFile, setGeojsonFile] = useState(null);
@@ -20,11 +21,7 @@ const CreateProject: React.FC = () => {
   const [lineExtractFileValue, setLineExtractFileValue] = useState(null);
   const dispatch = CoreModules.useAppDispatch();
   const location = useLocation();
-  const boxSX = {
-    'button:hover': {
-      textDecoration: 'none',
-    },
-  };
+
   useEffect(() => {
     return () => {
       dispatch(CreateProjectActions.SetIndividualProjectDetailsData({ dimension: 10 }));
@@ -128,76 +125,43 @@ const CreateProject: React.FC = () => {
           }}
         >
           {/* Project Details SideBar Button for Creating Project */}
-          <Link to="/create-project">
-            <CoreModules.Button variant="contained" color="error" disabled={location.pathname !== '/create-project'}>
-              Project Details
-            </CoreModules.Button>
-          </Link>
-
+          <NavigationButton
+            link="/create-project"
+            buttonText="Project Details"
+            disabled={location.pathname !== '/create-project'}
+          />
           {/* END */}
 
           {/* Upload Area SideBar Button for uploading Area page  */}
-          <Link to="/upload-area">
-            <CoreModules.Button
-              sx={boxSX}
-              variant="contained"
-              color="error"
-              disabled={location.pathname !== '/upload-area'}
-            >
-              Upload Area
-            </CoreModules.Button>
-          </Link>
+          <NavigationButton
+            link="/upload-area"
+            buttonText="Upload Area"
+            disabled={location.pathname !== '/upload-area'}
+          />
           {/* END */}
 
           {/* Extract Data SideBar Button for extracting data page  */}
-          <Link to="/data-extract">
-            <CoreModules.Button
-              sx={boxSX}
-              variant="contained"
-              color="error"
-              disabled={location.pathname !== '/data-extract'}
-            >
-              Data Extract
-            </CoreModules.Button>
-          </Link>
+          <NavigationButton
+            link="/data-extract"
+            buttonText="Data Extract"
+            disabled={location.pathname !== '/data-extract'}
+          />
           {/* END */}
 
           {/* Define Tasks SideBar Button for define tasks page  */}
-          <Link to="/define-tasks">
-            <CoreModules.Button
-              sx={boxSX}
-              variant="contained"
-              color="error"
-              disabled={location.pathname !== '/define-tasks'}
-            >
-              Define Tasks
-            </CoreModules.Button>
-          </Link>
-          {/* END */}
-          {/* Upload Area SideBar Button for uploading Area page  */}
-          <Link to="/select-form">
-            <CoreModules.Button
-              sx={boxSX}
-              variant="contained"
-              color="error"
-              disabled={location.pathname !== '/select-form'}
-            >
-              Select Form
-            </CoreModules.Button>
-          </Link>
+          <NavigationButton
+            link="/define-tasks"
+            buttonText="Define Tasks"
+            disabled={location.pathname !== '/define-tasks'}
+          />
           {/* END */}
 
-          {/* Basemap Selection of Project Boundary   */}
-          {/* <Link to="/basemap-selection">
-            <CoreModules.Button
-              sx={boxSX}
-              variant="contained"
-              color="error"
-              disabled={location.pathname !== '/basemap-selection'}
-            >
-              Basemap Selection
-            </CoreModules.Button>
-          </Link> */}
+          {/* Select Form SideBar Button for select form page  */}
+          <NavigationButton
+            link="/select-form"
+            buttonText="Select Form"
+            disabled={location.pathname !== '/select-form'}
+          />
           {/* END */}
         </CoreModules.Stack>
         {/* Showing Different Create Project Component When the url pathname changes */}

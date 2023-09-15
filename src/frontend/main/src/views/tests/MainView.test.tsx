@@ -1,25 +1,12 @@
 import React from 'react';
 import { screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import MainView from '../src/views/MainView';
-import { store } from '../src/store/Store';
-import { renderWithRouter } from '../src/utilfunctions/testUtils';
+import MainView from '../MainView';
+import { store } from '../../store/Store';
+import { renderWithRouter } from '../../utilfunctions/testUtils';
 import { Provider } from 'react-redux';
 
-describe('Frontend Application Running', () => {
-  it('renders App.jsx without errors', () => {
-    // Render the App component in a virtual DOM environment
-    const { container } = renderWithRouter(
-      <Provider store={store}>
-        <MainView />
-      </Provider>,
-    );
-
-    // Assert that the component renders without any errors
-    expect(container).toBeDefined();
-  });
-});
-describe('MyComponent', () => {
+describe('Main Page', () => {
   test('renders the app bar with correct elements', () => {
     renderWithRouter(
       <Provider store={store}>
