@@ -15,7 +15,7 @@ const MainView = () => {
   const checkTheme = CoreModules.useAppSelector((state) => state.theme.hotTheme);
   const theme = CoreModules.createTheme(checkTheme);
   const stateSnackBar = CoreModules.useAppSelector((state) => state.common.snackbar);
-  const handleClose = (event, reason) => {
+  const handleClose = (_event, reason) => {
     if (reason === 'clickaway') {
       return;
     }

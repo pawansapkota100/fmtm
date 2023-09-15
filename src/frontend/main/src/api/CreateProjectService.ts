@@ -472,7 +472,7 @@ const ValidateCustomForm: Function = (url: string, formUpload: any) => {
         formUploadFormData.append('form', formUpload);
 
         const getTaskSplittingResponse = await axios.post(url, formUploadFormData);
-        const resp: ValidateCustomFormResponse = getTaskSplittingResponse.data;
+        const resp: any = getTaskSplittingResponse.data;
         dispatch(CreateProjectActions.ValidateCustomForm(resp));
         dispatch(CreateProjectActions.ValidateCustomFormLoading(false));
         dispatch(

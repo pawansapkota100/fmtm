@@ -17,9 +17,10 @@
   "devDependencies": {
     "@babel/core": "^7.15.8",
     "@babel/plugin-transform-runtime": "^7.21.4",
-    "@babel/preset-env": "^7.15.8",
+    "@babel/preset-env": "^7.22.15",
     "@babel/preset-react": "^7.14.5",
     "@babel/preset-typescript": "^7.10.4",
+    "@types/jest": "^29.5.4",
     "@types/react": "^17.0.2",
     "@types/react-dom": "^17.0.2",
     "autoprefixer": "^10.4.15",
@@ -31,6 +32,7 @@
     "eslint-config-airbnb": "^19.0.4",
     "eslint-plugin-react": "^7.33.0",
     "html-webpack-plugin": "^5.3.2",
+    "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.6.1",
     "ol": "^8.0.0",
     "ol-layerswitcher": "^4.1.1",
@@ -41,7 +43,8 @@
     "tailwindcss": "^3.3.3",
     "terser-webpack-plugin": "^5.3.7",
     "thread-loader": "^3.0.4",
-    "typescript": "^4.5.2",
+    "ts-jest": "^29.1.1",
+    "typescript": "^4.9.5",
     "webpack": "^5.57.1",
     "webpack-bundle-analyzer": "^4.8.0",
     "webpack-cli": "^4.9.0",
@@ -57,10 +60,10 @@
     "@sentry/react": "^7.59.3",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^12.1.5",
-    "@types/jest": "^29.5.3",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "axios": "^1.2.2",
+    "babel-jest": "^29.7.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "env-cmd": "^10.1.0",
@@ -68,7 +71,6 @@
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-prettier": "^5.0.0",
     "install": "^0.13.0",
-    "jest": "^29.6.1",
     "mini-css-extract-plugin": "^2.7.5",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
@@ -83,6 +85,13 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "jest": {
+    "preset": "ts-jest",
+    "transform": {
+      "^.+\\.(ts|tsx)?$": ["ts-jest",{
+        "tsconfig": "./tsconfig.json"
+      }],
+      "^.+\\.(js|jsx)$": "babel-jest"
+    },
     "testEnvironment": "jsdom",
     "moduleNameMapper": {
       "^components/(.*)$": "<rootDir>/src/components/$1",
@@ -93,7 +102,8 @@
     "setupFilesAfterEnv": [
       "./setupTests.js"
     ],
-    "transformIgnorePatterns": ["<rootDir>/node_modules/"]
-
+    "transformIgnorePatterns": [
+      "<rootDir>/node_modules/"
+    ]
   }
 }

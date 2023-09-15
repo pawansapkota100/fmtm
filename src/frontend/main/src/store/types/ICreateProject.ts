@@ -94,7 +94,7 @@ export type ProjectDetailsTypes = {
   organization?: number;
   odk_central_url?: string;
   name?: string;
-  hashtags?: string;
+  hashtags?: string | undefined;
   short_description?: string;
   description?: string;
   splitting_algorithm?: string;
@@ -103,6 +103,7 @@ export type ProjectDetailsTypes = {
   data_extractWays?: string;
   form_ways?: string;
   organisation_id?: number;
+  areaGeojson?: any;
 };
 
 export type ProjectAreaTypes = {

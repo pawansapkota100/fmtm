@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { SyntheticEvent, useEffect, useState } from 'react';
 import useOLMap from '../hooks/useOlMap';
 import { MapContainer as MapComponent } from '../components/MapComponent/OpenLayersComponent';
 import LayerSwitcherControl from '../components/MapComponent/OpenLayersComponent/LayerSwitcher/index.js';
@@ -20,7 +20,7 @@ const DefineAreaMap = ({
   const [lineExtractedGeojson, setLineExtractedGeojson] = useState(null);
   const dividedTaskGeojson = CoreModules.useAppSelector((state) => state.createproject.dividedTaskGeojson);
 
-  const { mapRef, map } = useOLMap({
+  const { mapRef, map }: { mapRef: any; map: any } = useOLMap({
     // center: fromLonLat([85.3, 27.7]),
     center: [0, 0],
     zoom: 1,
@@ -32,7 +32,7 @@ const DefineAreaMap = ({
     } else if (uploadedGeojson) {
       const fileReader = new FileReader();
       fileReader.readAsText(uploadedGeojson, 'UTF-8');
-      fileReader.onload = (e) => {
+      fileReader.onload = (e: any) => {
         dispatch(CreateProjectActions.SetDividedTaskGeojson(e.target.result));
       };
     } else {
@@ -43,7 +43,7 @@ const DefineAreaMap = ({
     if (uploadedDataExtractFile) {
       const fileReader = new FileReader();
       fileReader.readAsText(uploadedDataExtractFile, 'UTF-8');
-      fileReader.onload = (e) => {
+      fileReader.onload = (e: any) => {
         setDataExtractedGeojson(e.target.result);
       };
     } else {
@@ -54,7 +54,7 @@ const DefineAreaMap = ({
     if (uploadedLineExtractFile) {
       const fileReader = new FileReader();
       fileReader.readAsText(uploadedLineExtractFile, 'UTF-8');
-      fileReader.onload = (e) => {
+      fileReader.onload = (e: any) => {
         setLineExtractedGeojson(e.target.result);
       };
     } else {

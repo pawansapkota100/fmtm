@@ -344,6 +344,8 @@ const DefineTasks: React.FC<any> = ({ geojsonFile, setGeojsonFile, dataExtractFi
         uploadedGeojson={geojsonFile}
         setGeojsonFile={setGeojsonFile}
         uploadedDataExtractFile={dataExtractFile}
+        uploadedLineExtractFile={undefined}
+        onDraw={undefined}
       />
     </CoreModules.Stack>
   );

@@ -74,7 +74,7 @@ const FormSelection: React.FC<any> = ({
     var newUpdatedTaskGeojsonFile = new File([exparsedNewDividedTaskGeojson], 'AOI.geojson', {
       type: 'application/geo+json',
     });
-    const hashtags = projectDetails.hashtags;
+    const hashtags = projectDetails?.hashtags || 'hotosm';
     const arrayHashtag = hashtags
       .split('#')
       .map((item) => item.trim())

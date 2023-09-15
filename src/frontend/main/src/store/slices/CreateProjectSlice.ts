@@ -146,5 +146,5 @@ const CreateProject = createSlice({
   },
 });
 
-export const CreateProjectActions = CreateProject.actions;
+export const CreateProjectActions: any = CreateProject.actions;
 export default CreateProject.reducer;

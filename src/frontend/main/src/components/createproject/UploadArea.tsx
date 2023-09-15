@@ -8,7 +8,7 @@ import DrawSvg from '../createproject/DrawSvg';
 // @ts-ignore
 const DefineAreaMap = React.lazy(() => import('../../views/DefineAreaMap'));
 
-const UploadArea: React.FC<any> = ({ geojsonFile, setGeojsonFile, setInputValue, inputValue }: any) => {
+const UploadArea: React.FC<any> = ({ geojsonFile, setGeojsonFile, inputValue }: any) => {
   const navigate = useNavigate();
   const defaultTheme: any = CoreModules.useAppSelector((state) => state.theme.hotTheme);
   const drawToggle = CoreModules.useAppSelector((state) => state.createproject.drawToggle);
