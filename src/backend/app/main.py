@@ -40,6 +40,7 @@ from .projects.project_crud import read_xlsforms
 from .submission import submission_routes
 from .tasks import tasks_routes
 from .users import user_routes
+from .scheduler import scheduler
 
 if not settings.DEBUG:
     sentry_sdk.init(
@@ -148,6 +149,8 @@ def get_logger():
 
 
 api = get_application()
+
+scheduler.start()
 
 
 @api.exception_handler(RequestValidationError)
