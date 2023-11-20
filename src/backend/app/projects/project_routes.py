@@ -41,6 +41,8 @@ from osm_rawdata.postgres import PostgresClient
 from shapely.geometry import mapping, shape
 from shapely.ops import unary_union
 from sqlalchemy.orm import Session
+from datetime import datetime
+from app.scheduler import scheduler
 
 from ..central import central_crud
 from ..db import database, db_models
@@ -645,10 +647,8 @@ async def generate_files(
         try:
             extracts_contents = await data_extracts.read()
             json.loads(extracts_contents)
-        except json.JSONDecodeError as e:
-            raise HTTPException(
-                status_code=400, detail="Provide a valid geojson file"
-            ) from e
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Provide a valid geojson file")
 
     # generate a unique task ID using uuid
     background_task_id = uuid.uuid4()
@@ -662,21 +662,26 @@ async def generate_files(
         db, task_id=background_task_id, project_id=project_id
     )
 
-    log.debug(f"Submitting {background_task_id} to background tasks stack")
-    background_tasks.add_task(
+    job = scheduler.add_job(
         project_crud.generate_appuser_files,
-        db,
-        project_id,
-        extract_polygon,
-        contents,
-        extracts_contents if data_extracts else None,
-        xform_title,
-        file_ext[1:] if upload else "xls",
-        background_task_id,
+        "date",
+        run_date=datetime.now(),
+        args=[
+            project_id,
+            extract_polygon,
+            contents,
+            extracts_contents if data_extracts else None,
+            xform_title,
+            file_ext[1:] if upload else "xls",
+            background_task_id,
+        ],
+        id=str(background_task_id),
     )
 
-    return {"Message": f"{project_id}", "task_id": f"{background_task_id}"}
-
+    return {
+        "Message": f"{project_id}",
+        "task_id": f"{background_task_id}",
+    }
 
 @router.post("/view_data_extracts/")
 async def get_data_extracts(
