@@ -40,6 +40,7 @@ from app.projects.project_crud import read_xlsforms
 from app.submissions import submission_routes
 from app.tasks import tasks_routes
 from app.users import user_routes
+from app.sockets import sockets
 
 # Add sentry tracing only in prod
 if not settings.DEBUG:
@@ -96,6 +97,8 @@ def get_application() -> FastAPI:
     _app.include_router(auth_routes.router)
     _app.include_router(submission_routes.router)
     _app.include_router(organisation_routes.router)
+    _app.include_router(sockets.router)
+
 
     return _app
 
