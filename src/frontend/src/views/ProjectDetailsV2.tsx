@@ -14,7 +14,6 @@ import CoreModules from '@/shared/CoreModules';
 import AssetModules from '@/shared/AssetModules';
 import FmtmLogo from '@/assets/images/hotLog.png';
 import GenerateBasemap from '@/components/GenerateBasemap';
-import { ProjectBuildingGeojsonService } from '@/api/SubmissionService';
 import TaskSectionPopup from '@/components/ProjectDetailsV2/TaskSectionPopup';
 import DialogTaskActions from '@/components/DialogTaskActions';
 import QrcodeComponent from '@/components/QrcodeComponent';
@@ -42,6 +41,7 @@ import { CommonActions } from '@/store/slices/CommonSlice';
 import Button from '@/components/common/Button';
 import ProjectInfo from '@/components/ProjectDetailsV2/ProjectInfo';
 import useOutsideClick from '@/hooks/useOutsideClick';
+import { isValidUrl } from '@/utilfunctions/urlChecker';
 
 const Home = () => {
   const dispatch = CoreModules.useAppDispatch();
@@ -54,8 +54,9 @@ const Home = () => {
   const [mainView, setView] = useState();
   const [featuresLayer, setFeaturesLayer] = useState();
   const [toggleGenerateModal, setToggleGenerateModal] = useState(false);
-  const [taskBuildingGeojson, setTaskBuildingGeojson] = useState(null);
-  const [initialFeaturesLayer, setInitialFeaturesLayer] = useState(null);
+  const [dataExtractUrl, setDataExtractUrl] = useState(null);
+  const [dataExtractExtent, setDataExtractExtent] = useState(null);
+  const [taskBoundariesLayer, setTaskBoundariesLayer] = useState(null);
   const [currentCoordinate, setCurrentCoordinate] = useState({ latitude: null, longitude: null });
   const [positionGeojson, setPositionGeojson] = useState(null);
   const [deviceRotation, setDeviceRotation] = useState(0);
@@ -66,7 +67,6 @@ const Home = () => {
   const state = CoreModules.useAppSelector((state) => state.project);
   const projectInfo = CoreModules.useAppSelector((state) => state.home.selectedProject);
   const stateSnackBar = CoreModules.useAppSelector((state) => state.home.snackbar);
-  const projectBuildingGeojson = CoreModules.useAppSelector((state) => state.project.projectBuildingGeojson);
   const mobileFooterSelection = CoreModules.useAppSelector((state) => state.project.mobileFooterSelection);
   const mapTheme = CoreModules.useAppSelector((state) => state.theme.hotTheme);
   const geolocationStatus = CoreModules.useAppSelector((state) => state.project.geolocationStatus);
@@ -103,9 +103,7 @@ const Home = () => {
         dispatch(ProjectActions.SetProjectInfo(projectInfo));
       }
     }
-    return () => {
-      dispatch(ProjectActions.SetProjectBuildingGeojson(null));
-    };
+    return () => {};
   }, [params.id]);
 
   const { mapRef, map } = useOLMap({
@@ -127,29 +125,12 @@ const Home = () => {
       },
       id: `${feature.id}_${feature.task_status}`,
     }));
-    const taskBuildingGeojsonFeatureCollection = {
+    const taskBoundariesFeatcol = {
       ...geojsonObjectModel,
       features: features,
     };
-    setInitialFeaturesLayer(taskBuildingGeojsonFeatureCollection);
+    setTaskBoundariesLayer(taskBoundariesFeatcol);
   }, [state.projectTaskBoundries[0]?.taskBoundries?.length]);
-
-  useEffect(() => {
-    if (!map) return;
-    if (!projectBuildingGeojson) return;
-
-    const taskBuildingGeojsonFeatureCollection = {
-      ...basicGeojsonTemplate,
-      features: [
-        ...projectBuildingGeojson?.map((feature) => ({
-          ...feature.geometry,
-          id: feature.id,
-        })),
-      ],
-    };
-
-    setTaskBuildingGeojson(taskBuildingGeojsonFeatureCollection);
-  }, [map, projectBuildingGeojson]);
 
   useEffect(() => {
     dispatch(GetProjectDashboard(`${import.meta.env.VITE_API_URL}/projects/project_dashboard/${decodedId}`));
@@ -159,11 +140,10 @@ const Home = () => {
   const projectClickOnMap = (properties, feature) => {
     setFeaturesLayer(feature, 'feature');
     let extent = properties.geometry.getExtent();
-    dispatch(
-      ProjectBuildingGeojsonService(
-        `${import.meta.env.VITE_API_URL}/projects/${decodedId}/features?task_id=${properties.uid}`,
-      ),
-    );
+
+    setDataExtractExtent(properties.geometry);
+    setDataExtractUrl(state.projectInfo.data_extract_url);
+
     mapRef.current?.scrollIntoView({
       block: 'center',
       behavior: 'smooth',
@@ -393,9 +373,9 @@ const Home = () => {
             >
               <LayerSwitcherControl visible={'outdoors'} />
 
-              {initialFeaturesLayer && initialFeaturesLayer?.features?.length > 0 && (
+              {taskBoundariesLayer && taskBoundariesLayer?.features?.length > 0 && (
                 <VectorLayer
-                  geojson={initialFeaturesLayer}
+                  geojson={taskBoundariesLayer}
                   viewProperties={{
                     size: map?.getSize(),
                     padding: [50, 50, 50, 50],
@@ -409,9 +389,10 @@ const Home = () => {
                   getTaskStatusStyle={(feature) => getTaskStatusStyle(feature, mapTheme)}
                 />
               )}
-              {taskBuildingGeojson && taskBuildingGeojson?.features?.length > 0 && (
+              {dataExtractUrl && isValidUrl(dataExtractUrl) && (
                 <VectorLayer
-                  geojson={taskBuildingGeojson}
+                  fgbUrl={dataExtractUrl}
+                  fgbExtent={dataExtractExtent}
                   style={buildingStyle}
                   viewProperties={{
                     size: map?.getSize(),
