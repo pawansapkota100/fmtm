@@ -93,15 +93,9 @@ async def get_projet_details(
         Response: Project details.
     """
     project = await project_crud.get_project(db, project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail={"Project not found"})
 
     # ODK Credentials
-    odk_credentials = project_schemas.ODKCentralDecrypted(
-        odk_central_url=project.odk_central_url,
-        odk_central_user=project.odk_central_user,
-        odk_central_password=project.odk_central_password,
-    )
+    odk_credentials = await project_deps.get_odk_credentials(project_id, db)
 
     odk_details = central_crud.get_odk_project_full_details(
         project.odkid, odk_credentials
@@ -233,11 +227,7 @@ async def delete_project(
         f"deletion of project {project.id}"
     )
     # Odk crendentials
-    odk_credentials = project_schemas.ODKCentralDecrypted(
-        odk_central_url=project.odk_central_url,
-        odk_central_user=project.odk_central_user,
-        odk_central_password=project.odk_central_password,
-    )
+    odk_credentials = await project_deps.get_odk_credentials(project.id, db)
     # Delete ODK Central project
     await central_crud.delete_odk_project(project.odkid, odk_credentials)
     # Delete FMTM project
@@ -618,6 +608,7 @@ async def generate_files(
 
     form_category = project.xform_title
     custom_xls_form = None
+    file_ext = None
     if xls_form_upload:
         log.debug("Validating uploaded XLS form")
 
@@ -640,7 +631,7 @@ async def generate_files(
     # Create task in db and return uuid
     log.debug(f"Creating export background task for project ID: {project_id}")
     background_task_id = await project_crud.insert_background_task_into_database(
-        db, project_id=project_id
+        db, project_id=str(project_id)
     )
 
     log.debug(f"Submitting {background_task_id} to background tasks stack")
@@ -893,8 +884,6 @@ async def download_form(
 ):
     """Download the XLSForm for a project."""
     project = await project_crud.get_project(db, project_id)
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
 
     headers = {
         "Content-Disposition": "attachment; filename=submission_data.xls",
