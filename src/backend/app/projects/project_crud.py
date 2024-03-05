@@ -84,41 +84,44 @@ async def get_projects(
     search: Optional[str] = None,
 ):
     """Get all projects."""
-    filters = []
-    if user_id:
-        filters.append(db_models.DbProject.author_id == user_id)
+    try:
+        filters = []
+        if user_id:
+            filters.append(db_models.DbProject.author_id == user_id)
 
-    if hashtags:
-        filters.append(db_models.DbProject.hashtags.op("&&")(hashtags))  # type: ignore
+        if hashtags:
+            filters.append(db_models.DbProject.hashtags.op("&&")(hashtags))  # type: ignore
 
-    if search:
-        filters.append(
+        if search:
+            filters.append(
             db_models.DbProject.project_info.name.ilike(  # type: ignore
                 f"%{search}%"
             )
         )
 
-    if len(filters) > 0:
-        db_projects = (
-            db.query(db_models.DbProject)
-            .filter(and_(*filters))
-            .order_by(db_models.DbProject.id.desc())  # type: ignore
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
-        project_count = db.query(db_models.DbProject).filter(and_(*filters)).count()
+        if len(filters) > 0:
+            db_projects = (
+                db.query(db_models.DbProject)
+                .filter(and_(*filters))
+                .order_by(db_models.DbProject.id.desc())  # type: ignore
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )
+            project_count = db.query(db_models.DbProject).filter(and_(*filters)).count()
 
-    else:
-        db_projects = (
-            db.query(db_models.DbProject)
-            .order_by(db_models.DbProject.id.desc())  # type: ignore
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
-        project_count = db.query(db_models.DbProject).count()
-    return project_count, await convert_to_app_projects(db_projects)
+        else:
+            db_projects = (
+                db.query(db_models.DbProject)
+                .order_by(db_models.DbProject.id.desc())  # type: ignore
+                .offset(skip)
+                .limit(limit)
+                .all()
+            )
+            project_count = db.query(db_models.DbProject).count()
+        return project_count, await convert_to_app_projects(db_projects)
+    except Exception as e:
+        raise HTTPException(status_code= 400, detail=str(e)) from e
 
 
 async def get_project_summaries(
@@ -130,11 +133,13 @@ async def get_project_summaries(
     search: Optional[str] = None,
 ):
     """Get project summary details for main page."""
-    project_count, db_projects = await get_projects(
-        db, user_id, skip, limit, hashtags, search
-    )
-    return project_count, await convert_to_project_summaries(db_projects)
-
+    try:
+        project_count, db_projects = await get_projects(
+            db, user_id, skip, limit, hashtags, search
+        )
+        return project_count, await convert_to_project_summaries(db_projects)
+    except Exception as e:
+        raise HTTPException(status_code= 400, detail=str(e)) from e
 
 async def get_project(db: Session, project_id: int):
     """Get a single project."""
@@ -1354,20 +1359,23 @@ async def get_task_geometry(db: Session, project_id: int):
     Returns:
         str: A geojson of the task boundaries
     """
-    db_tasks = await tasks_crud.get_tasks(db, project_id, None)
-    features = []
-    for task in db_tasks:
-        geom = to_shape(task.outline)
-        # Convert the shapely geometry object to GeoJSON
-        geometry = geom.__geo_interface__
-        properties = {
-            "task_id": task.id,
-        }
-        feature = {"type": "Feature", "geometry": geometry, "properties": properties}
-        features.append(feature)
+    try:
+        db_tasks = await tasks_crud.get_tasks(db, project_id, None)
+        features = []
+        for task in db_tasks:
+            geom = to_shape(task.outline)
+            # Convert the shapely geometry object to GeoJSON
+            geometry = geom.__geo_interface__
+            properties = {
+                "task_id": task.id,
+            }
+            feature = {"type": "Feature", "geometry": geometry, "properties": properties}
+            features.append(feature)
 
-    feature_collection = {"type": "FeatureCollection", "features": features}
-    return json.dumps(feature_collection)
+        feature_collection = {"type": "FeatureCollection", "features": features}
+        return json.dumps(feature_collection)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 async def get_project_features_geojson(
@@ -1607,18 +1615,21 @@ async def insert_background_task_into_database(
     Returns:
         task_id (uuid.uuid4): The background task uuid for tracking.
     """
-    task_id = uuid.uuid4()
+    try:
+        task_id = uuid.uuid4()
 
-    task = db_models.BackgroundTasks(
-        id=str(task_id), name=name, status=1, project_id=project_id
-    )  # 1 = running
+        task = db_models.BackgroundTasks(
+            id=str(task_id), name=name, status=1, project_id=project_id
+        )  # 1 = running
 
-    db.add(task)
-    db.commit()
-    db.refresh(task)
+        db.add(task)
+        db.commit()
+        db.refresh(task)
 
-    return task_id
-
+        return task_id
+    
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 async def update_background_task_status_in_database(
     db: Session, task_id: uuid.UUID, status: int, message: str = None
@@ -1960,23 +1971,27 @@ async def get_project_users(db: Session, project_id: int):
             the username and the number of contributions made by each user
             for the specified project.
     """
-    contributors = (
-        db.query(db_models.DbTaskHistory)
-        .filter(db_models.DbTaskHistory.project_id == project_id)
-        .all()
-    )
-    unique_user_ids = {
-        user.user_id for user in contributors if user.user_id is not None
-    }
-    response = []
+    try:
+        contributors = (
+            db.query(db_models.DbTaskHistory)
+            .filter(db_models.DbTaskHistory.project_id == project_id)
+            .all()
+        )
+        unique_user_ids = {
+            user.user_id for user in contributors if user.user_id is not None
+        }
+        response = []
 
-    for user_id in unique_user_ids:
-        contributions = count_user_contributions(db, user_id, project_id)
-        db_user = await user_crud.get_user(db, user_id)
-        response.append({"user": db_user.username, "contributions": contributions})
+        for user_id in unique_user_ids:
+            contributions = count_user_contributions(db, user_id, project_id)
+            db_user = await user_crud.get_user(db, user_id)
+            response.append({"user": db_user.username, "contributions": contributions})
 
-    response = sorted(response, key=lambda x: x["contributions"], reverse=True)
-    return response
+        response = sorted(response, key=lambda x: x["contributions"], reverse=True)
+        return response
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 def count_user_contributions(db: Session, user_id: int, project_id: int) -> int:

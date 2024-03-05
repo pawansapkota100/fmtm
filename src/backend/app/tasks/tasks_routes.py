@@ -145,49 +145,53 @@ async def task_features_count(
     db: Session = Depends(database.get_db),
 ):
     """Get all features within a task area."""
-    # Get the project object.
-    project = await project_crud.get_project(db, project_id)
+    try:
+        # Get the project object.
+        project = await project_crud.get_project(db, project_id)
 
-    # ODK Credentials
-    odk_credentials = await project_deps.get_odk_credentials(db, project_id)
+        # ODK Credentials
+        odk_credentials = await project_deps.get_odk_credentials(db, project_id)
 
-    odk_details = central_crud.list_odk_xforms(project.odkid, odk_credentials, True)
+        odk_details = central_crud.list_odk_xforms(project.odkid, odk_credentials, True)
 
-    # Assemble the final data list
-    data = []
-    feature_count_query = text(
+        # Assemble the final data list
+        data = []
+        feature_count_query = text(
+            """
+            SELECT id, feature_count
+            FROM tasks
+            WHERE project_id = :project_id;
         """
-        SELECT id, feature_count
-        FROM tasks
-        WHERE project_id = :project_id;
-    """
-    )
-    result = db.execute(feature_count_query, {"project_id": project_id})
-    feature_counts = result.all()
-
-    if not feature_counts:
-        msg = f"To tasks found for project {project_id}"
-        log.warning(msg)
-        raise HTTPException(status_code=404, detail=msg)
-
-    feature_count_task_dict = {f"{record[0]}": record[1] for record in feature_counts}
-
-    project_name_prefix = project.project_name_prefix
-
-    for x in odk_details:
-        # Strip everything except task id from xmlFormId
-        task_id = f"{x['xmlFormId']}".strip(f"{project_name_prefix}_task_")
-
-        data.append(
-            {
-                "task_id": task_id,
-                "submission_count": x["submissions"],
-                "last_submission": x["lastSubmission"],
-                "feature_count": feature_count_task_dict[task_id],
-            }
         )
+        result = db.execute(feature_count_query, {"project_id": project_id})
+        feature_counts = result.all()
 
-    return data
+        if not feature_counts:
+            msg = f"To tasks found for project {project_id}"
+            log.warning(msg)
+            raise HTTPException(status_code=404, detail=msg)
+
+        feature_count_task_dict = {f"{record[0]}": record[1] for record in feature_counts}
+
+        project_name_prefix = project.project_name_prefix
+
+        for x in odk_details:
+            # Strip everything except task id from xmlFormId
+            task_id = f"{x['xmlFormId']}".strip(f"{project_name_prefix}_task_")
+            try:
+                data.append(
+                    {
+                        "task_id": task_id,
+                        "submission_count": x["submissions"],
+                        "last_submission": x["lastSubmission"],
+                        "feature_count": feature_count_task_dict[task_id],
+                    }
+                )
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"fail to retrieves data about features {str(e)}")
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=400, detail={str(e)})
 
 
 @router.get("/task-comments/", response_model=list[tasks_schemas.TaskCommentResponse])

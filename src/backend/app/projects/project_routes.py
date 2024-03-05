@@ -148,33 +148,37 @@ async def read_project_summaries(
     db: Session = Depends(database.get_db),
 ):
     """Get a paginated summary of projects."""
-    if hashtags:
-        hashtags = hashtags.split(",")  # create list of hashtags
-        hashtags = list(
-            filter(lambda hashtag: hashtag.startswith("#"), hashtags)
-        )  # filter hashtags that do start with #
+    try:
+        if hashtags:
+            hashtags = hashtags.split(",")  # create list of hashtags
+            hashtags = list(
+                filter(lambda hashtag: hashtag.startswith("#"), hashtags)
+            )  # filter hashtags that do start with #
 
-    total_projects = db.query(db_models.DbProject).count()
-    skip = (page - 1) * results_per_page
-    limit = results_per_page
+        total_projects = db.query(db_models.DbProject).count()
+        skip = (page - 1) * results_per_page
+        limit = results_per_page
 
-    project_count, projects = await project_crud.get_project_summaries(
-        db, user_id, skip, limit, hashtags, None
-    )
+        project_count, projects = await project_crud.get_project_summaries(
+            db, user_id, 
+            skip, limit, hashtags, None
+        )
 
-    pagination = await project_crud.get_pagination(
-        page, project_count, results_per_page, total_projects
-    )
-    project_summaries = [
-        project_schemas.ProjectSummary.from_db_project(project) for project in projects
-    ]
+        pagination = await project_crud.get_pagination(
+            page, project_count, results_per_page, total_projects
+        )
+        project_summaries = [
+            project_schemas.ProjectSummary.from_db_project(project) for project in projects
+        ]
 
-    response = project_schemas.PaginatedProjectSummaries(
-        results=project_summaries,
-        pagination=pagination,
-    )
-    return response
-
+        response = project_schemas.PaginatedProjectSummaries(
+            results=project_summaries,
+            pagination=pagination,
+        )
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    
 
 @router.get(
     "/search-projects", response_model=project_schemas.PaginatedProjectSummaries
@@ -187,33 +191,37 @@ async def search_project(
     results_per_page: int = Query(13, le=100),
     db: Session = Depends(database.get_db),
 ):
+    
     """Search projects by string, hashtag, or other criteria."""
-    if hashtags:
-        hashtags = hashtags.split(",")  # create list of hashtags
-        hashtags = list(
-            filter(lambda hashtag: hashtag.startswith("#"), hashtags)
-        )  # filter hashtags that do start with #
+    try:
+        if hashtags:
+            hashtags = hashtags.split(",")  # create list of hashtags
+            hashtags = list(
+                filter(lambda hashtag: hashtag.startswith("#"), hashtags)
+            )  # filter hashtags that do start with #
 
-    total_projects = db.query(db_models.DbProject).count()
-    skip = (page - 1) * results_per_page
-    limit = results_per_page
+        total_projects = db.query(db_models.DbProject).count()
+        skip = (page - 1) * results_per_page
+        limit = results_per_page
 
-    project_count, projects = await project_crud.get_project_summaries(
-        db, user_id, skip, limit, hashtags, search
-    )
+        project_count, projects = await project_crud.get_project_summaries(
+            db, user_id, skip, limit, hashtags, search
+        )
 
-    pagination = await project_crud.get_pagination(
-        page, project_count, results_per_page, total_projects
-    )
-    project_summaries = [
-        project_schemas.ProjectSummary.from_db_project(project) for project in projects
-    ]
+        pagination = await project_crud.get_pagination(
+            page, project_count, results_per_page, total_projects
+        )
+        project_summaries = [
+            project_schemas.ProjectSummary.from_db_project(project) for project in projects
+        ]
 
-    response = project_schemas.PaginatedProjectSummaries(
-        results=project_summaries,
-        pagination=pagination,
-    )
-    return response
+        response = project_schemas.PaginatedProjectSummaries(
+            results=project_summaries,
+            pagination=pagination,
+        )
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/{project_id}", response_model=project_schemas.ReadProject)
@@ -686,11 +694,14 @@ async def get_categories(current_user: AuthUser = Depends(login_required)):
     - Returns a JSON object containing a list of categories and their respoective forms.
 
     """
-    # FIXME update to use osm-rawdata
-    categories = (
-        getChoices()
+    try:
+        # FIXME update to use osm-rawdata
+        categories = (
+            getChoices()
     )  # categories are fetched from osm_fieldwork.make_data_extracts.getChoices()
-    return categories
+        return categories
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.post("/preview-split-by-square/")
@@ -756,15 +767,16 @@ async def get_or_set_data_extract(
     db: Session = Depends(database.get_db),
     project_user_dict: dict = Depends(project_admin),
 ):
-    """Get or set the data extract URL for a project."""
-    fgb_url = await project_crud.get_or_set_data_extract_url(
-        db,
-        project_id,
-        url,
-    )
-
-    return JSONResponse(status_code=200, content={"url": fgb_url})
-
+    try:
+        """Get or set the data extract URL for a project."""
+        fgb_url = await project_crud.get_or_set_data_extract_url(
+            db,
+            project_id,
+            url,
+        )
+        return JSONResponse(status_code=200, content={"url": fgb_url})
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="fail to extract data from url {e}") from e
 
 @router.post("/upload-custom-extract/")
 async def upload_custom_extract(
@@ -823,19 +835,22 @@ async def download_form(
     current_user: AuthUser = Depends(login_required),
 ):
     """Download the XLSForm for a project."""
-    project = await project_crud.get_project(db, project_id)
+    try:
+        project = await project_crud.get_project(db, project_id)
 
-    headers = {
-        "Content-Disposition": "attachment; filename=submission_data.xls",
-        "Content-Type": "application/media",
-    }
-    if not project.form_xls:
-        xlsform_path = f"{xlsforms_path}/{project.xform_category}.xls"
-        if os.path.exists(xlsform_path):
-            return FileResponse(xlsform_path, filename="form.xls")
-        else:
-            raise HTTPException(status_code=404, detail="Form not found")
-    return Response(content=project.form_xls, headers=headers)
+        headers = {
+            "Content-Disposition": "attachment; filename=submission_data.xls",
+            "Content-Type": "application/media",
+        }
+        if not project.form_xls:
+            xlsform_path = f"{xlsforms_path}/{project.xform_category}.xls"
+            if os.path.exists(xlsform_path):
+                return FileResponse(xlsform_path, filename="form.xls")
+            else:
+                raise HTTPException(status_code=404, detail="Form not found")
+        return Response(content=project.form_xls, headers=headers)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.post("/update-form")
@@ -934,13 +949,16 @@ async def download_project_boundary(
     Returns:
         Response: The HTTP response object containing the downloaded file.
     """
-    out = await project_crud.get_project_geometry(db, project_id)
-    headers = {
-        "Content-Disposition": "attachment; filename=project_outline.geojson",
-        "Content-Type": "application/media",
-    }
+    try:
+        out = await project_crud.get_project_geometry(db, project_id)
+        headers = {
+            "Content-Disposition": "attachment; filename=project_outline.geojson",
+            "Content-Type": "application/media",
+        }
 
-    return Response(content=out, headers=headers)
+        return Response(content=out, headers=headers)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Fail to download project boundary: " + str(e)) from e
 
 
 @router.get("/{project_id}/download_tasks")
@@ -959,14 +977,17 @@ async def download_task_boundaries(
     Returns:
         Response: The HTTP response object containing the downloaded file.
     """
-    out = await project_crud.get_task_geometry(db, project_id)
+    try:
+        out = await project_crud.get_task_geometry(db, project_id)
 
-    headers = {
-        "Content-Disposition": "attachment; filename=project_outline.geojson",
-        "Content-Type": "application/media",
-    }
+        headers = {
+            "Content-Disposition": "attachment; filename=project_outline.geojson",
+            "Content-Type": "application/media",
+        }
 
-    return Response(content=out, headers=headers)
+        return Response(content=out, headers=headers)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Fail to download project boundary: " + str(e)) from e
 
 
 @router.get("/features/download/")
@@ -989,18 +1010,20 @@ async def download_features(
     Returns:
         Response: The HTTP response object containing the downloaded file.
     """
-    feature_collection = await project_crud.get_project_features_geojson(
-        db, project_id, task_id
-    )
-
-    headers = {
-        "Content-Disposition": (
-            f"attachment; filename=fmtm_project_{project_id}_features.geojson"
-        ),
-        "Content-Type": "application/media",
-    }
-
-    return Response(content=json.dumps(feature_collection), headers=headers)
+    try:
+        feature_collection = await project_crud.get_project_features_geojson(
+            db, project_id, task_id
+        )
+        headers = {
+            "Content-Disposition": (
+                f"attachment; filename=fmtm_project_{project_id}_features.geojson"
+            ),
+            "Content-Type": "application/media",
+        }
+        return Response(content=json.dumps(feature_collection), headers=headers)
+    
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="fail to download features:" + str(e)) from e
 
 
 @router.get("/convert-fgb-to-geojson/")
@@ -1023,26 +1046,29 @@ async def convert_fgb_to_geojson(
     Returns:
         Response: The HTTP response object containing the downloaded file.
     """
-    with requests.get(url) as response:
-        if not response.ok:
+    try:
+        with requests.get(url) as response:
+            if not response.ok:
+                raise HTTPException(
+                    status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
+                    detail="Download failed for data extract",
+                )
+            data_extract_geojson = await flatgeobuf_to_geojson(db, response.content)
+
+        if not data_extract_geojson:
             raise HTTPException(
                 status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-                detail="Download failed for data extract",
+                detail=("Failed to convert flatgeobuf --> geojson"),
             )
-        data_extract_geojson = await flatgeobuf_to_geojson(db, response.content)
 
-    if not data_extract_geojson:
-        raise HTTPException(
-            status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
-            detail=("Failed to convert flatgeobuf --> geojson"),
-        )
+        headers = {
+            "Content-Disposition": ("attachment; filename=fmtm_data_extract.geojson"),
+            "Content-Type": "application/media",
+        }
 
-    headers = {
-        "Content-Disposition": ("attachment; filename=fmtm_data_extract.geojson"),
-        "Content-Type": "application/media",
-    }
-
-    return Response(content=json.dumps(data_extract_geojson), headers=headers)
+        return Response(content=json.dumps(data_extract_geojson), headers=headers)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/tiles/{project_id}")
@@ -1076,26 +1102,27 @@ async def generate_project_tiles(
     Returns:
         str: Success message that tile generation started.
     """
+    try:
     # Create task in db and return uuid
-    log.debug(
-        "Creating generate_project_tiles background task "
-        f"for project ID: {project_id}"
-    )
-    background_task_id = await project_crud.insert_background_task_into_database(
-        db, project_id=project_id
-    )
-
-    background_tasks.add_task(
-        project_crud.get_project_tiles,
-        db,
-        project_id,
-        background_task_id,
-        source,
-        format,
-        tms,
-    )
-
-    return {"Message": "Tile generation started"}
+        log.debug(
+            "Creating generate_project_tiles background task "
+            f"for project ID: {project_id}"
+        )
+        background_task_id = await project_crud.insert_background_task_into_database(
+            db, project_id=project_id
+        )
+        background_tasks.add_task(
+            project_crud.get_project_tiles,
+            db,
+            project_id,
+            background_task_id,
+            source,
+            format,
+            tms,
+        )
+        return {"Message": "Tile generation started"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/tiles_list/{project_id}/")
@@ -1116,34 +1143,34 @@ async def tiles_list(
     """
     return await project_crud.get_mbtiles_list(db, project_id)
 
-
 @router.get("/download_tiles/")
 async def download_tiles(
     tile_id: int,
     db: Session = Depends(database.get_db),
     current_user: AuthUser = Depends(login_required),
 ):
-    """Download the basemap tile archive for a project."""
-    log.debug("Getting tile archive path from DB")
-    tiles_path = (
-        db.query(db_models.DbTilesPath)
-        .filter(db_models.DbTilesPath.id == str(tile_id))
-        .first()
-    )
-    log.info(f"User requested download for tiles: {tiles_path.path}")
+    try:
+        """Download the basemap tile archive for a project."""
+        log.debug("Getting tile archive path from DB")
+        tiles_path = (
+            db.query(db_models.DbTilesPath)
+            .filter(db_models.DbTilesPath.id == str(tile_id))
+            .first()
+            )
+        log.info(f"User requested download for tiles: {tiles_path.path}")
+        project_id = tiles_path.project_id
+        project = await project_crud.get_project(db, project_id)
+        filename = Path(tiles_path.path).name.replace(
+            f"{project_id}_", f"{project.project_name_prefix}_"
+        )
+        log.debug(f"Sending tile archive to user: {filename}")
 
-    project_id = tiles_path.project_id
-    project = await project_crud.get_project(db, project_id)
-    filename = Path(tiles_path.path).name.replace(
-        f"{project_id}_", f"{project.project_name_prefix}_"
-    )
-    log.debug(f"Sending tile archive to user: {filename}")
-
-    return FileResponse(
-        tiles_path.path,
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
-
+        return FileResponse(
+            tiles_path.path,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 @router.get("/boundary_in_osm/{project_id}/")
 async def download_task_boundary_osm(
@@ -1153,27 +1180,30 @@ async def download_task_boundary_osm(
 ):
     """Downloads the boundary of a task as a OSM file.
 
-    Args:
-        project_id (int): The id of the project.
-        db (Session): The database session, provided automatically.
-        current_user (AuthUser): Check if user has MAPPER permission.
+        Args:
+            project_id (int): The id of the project.
+            db (Session): The database session, provided automatically.
+            current_user (AuthUser): Check if user has MAPPER permission.
 
-    Returns:
-        Response: The HTTP response object containing the downloaded file.
-    """
-    out = await project_crud.get_task_geometry(db, project_id)
-    file_path = f"/tmp/{project_id}_task_boundary.geojson"
+        Returns:
+            Response: The HTTP response object containing the downloaded file.
+        """
+    try:
+        out = await project_crud.get_task_geometry(db, project_id)
+        file_path = f"/tmp/{project_id}_task_boundary.geojson"
 
-    # Write the response content to the file
-    with open(file_path, "w") as f:
-        f.write(out)
-    result = await project_crud.convert_geojson_to_osm(file_path)
+        # Write the response content to the file
+        with open(file_path, "w") as f:
+            f.write(out)
+        result = await project_crud.convert_geojson_to_osm(file_path)
 
-    with open(result, "r") as f:
-        content = f.read()
+        with open(result, "r") as f:
+            content = f.read()
 
-    response = Response(content=content, media_type="application/xml")
-    return response
+        response = Response(content=content, media_type="application/xml")
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/centroid/")
@@ -1191,19 +1221,22 @@ async def project_centroid(
         list[tuple[int, str]]: A list of tuples containing the task ID and
             the centroid as a string.
     """
-    query = text(
-        f"""SELECT id,
-            ARRAY_AGG(ARRAY[ST_X(ST_Centroid(outline)),
-            ST_Y(ST_Centroid(outline))]) AS centroid
-            FROM projects
-            WHERE {f"id={project_id}" if project_id else "1=1"}
-            GROUP BY id;"""
-    )
+    try:
+        query = text(
+            f"""SELECT id,
+                ARRAY_AGG(ARRAY[ST_X(ST_Centroid(outline)),
+                ST_Y(ST_Centroid(outline))]) AS centroid
+                FROM projects
+                WHERE {f"id={project_id}" if project_id else "1=1"}
+                GROUP BY id;"""
+        )
 
-    result = db.execute(query)
-    result_dict_list = [{"id": row[0], "centroid": row[1]} for row in result.fetchall()]
-    return result_dict_list
-
+        result = db.execute(query)
+        result_dict_list = [{"id": row[0], "centroid": row[1]} for row in result.fetchall()]
+        return result_dict_list
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+        
 
 @router.get("/task-status/{uuid}", response_model=project_schemas.BackgroundTaskStatus)
 async def get_task_status(
@@ -1213,17 +1246,20 @@ async def get_task_status(
 ):
     """Get the background task status by passing the task UUID."""
     # Get the backgrund task status
-    task_status, task_message = await project_crud.get_background_task_status(
-        task_uuid, db
-    )
-    return project_schemas.BackgroundTaskStatus(
-        status=task_status.name,
-        message=task_message or None,
-        # progress=some_func_to_get_progress,
-    )
+    try:
+        task_status, task_message = await project_crud.get_background_task_status(
+            task_uuid, db
+        )
+        return project_schemas.BackgroundTaskStatus(
+            status=task_status.name,
+            message=task_message or None,
+            # progress=some_func_to_get_progress,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
-@router.get("/templates/")
+@router.get("/templates/") # TODO
 async def get_template_file(
     file_type: str = Query(
         ..., enum=["data_extracts", "form"], description="Choose file type"
@@ -1236,15 +1272,18 @@ async def get_template_file(
 
     returns: Requested file as a FileResponse.
     """
-    file_type_paths = {
-        "data_extracts": f"{data_path}/template/template.geojson",
-        "form": f"{data_path}/template/template.xls",
-    }
-    file_path = file_type_paths.get(file_type)
-    filename = file_path.split("/")[-1]
-    return FileResponse(
-        file_path, media_type="application/octet-stream", filename=filename
-    )
+    try:
+        file_type_paths = {
+            "data_extracts": f"{data_path}/template/template.geojson",
+            "form": f"{data_path}/template/template.xls",
+        }
+        file_path = file_type_paths.get(file_type)
+        filename = file_path.split("/")[-1]
+        return FileResponse(
+            file_path, media_type="application/octet-stream", filename=filename)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Template not found {str(e)}") from e
+
 
 
 @router.get(
@@ -1269,17 +1308,20 @@ async def project_dashboard(
     Returns:
         ProjectDashboard: The project dashboard details.
     """
-    data = await project_crud.get_dashboard_detail(db_project, db_organisation, db)
+    try:
+        data = await project_crud.get_dashboard_detail(db_project, db_organisation, db)
 
-    background_task_id = await project_crud.insert_background_task_into_database(
-        db, "sync_submission", db_project.id
-    )
-    # Update submissions in S3
-    background_tasks.add_task(
-        submission_crud.update_submission_in_s3, db, db_project.id, background_task_id
-    )
+        background_task_id = await project_crud.insert_background_task_into_database(
+            db, "sync_submission", db_project.id
+        )
+        # Update submissions in S3
+        background_tasks.add_task(
+            submission_crud.update_submission_in_s3, db, db_project.id, background_task_id
+        )
 
-    return data
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/contributors/{project_id}")
