@@ -43,7 +43,7 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-
+from fastapi import HTTPException
 @router.get("/")
 async def read_submissions(
     project_id: int,
@@ -89,13 +89,16 @@ async def download_submission(
     Returns:
         Union[list[dict], File]: JSON of submissions, or submission file.
     """
-    if not (task_id or export_json):
-        file = await submission_crud.gather_all_submission_csvs(db, project_id)
-        return FileResponse(file)
+    try:
+        if not (task_id or export_json):
+            file = await submission_crud.gather_all_submission_csvs(db, project_id)
+            return FileResponse(file)
 
-    return await submission_crud.download_submission(
-        db, project_id, task_id, export_json
-    )
+        return await submission_crud.download_submission(
+            db, project_id, task_id, export_json
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Fail to download submission: " + str(e)) from e
 
 
 @router.get("/submission-points")
@@ -275,32 +278,35 @@ async def get_osm_xml(
 
     TODO refactor to put logic in crud for easier testing.
     """
-    # JSON FILE PATH
-    jsoninfile = f"/tmp/{project_id}_json_infile.json"
+    try:
+        # JSON FILE PATH
+        jsoninfile = f"/tmp/{project_id}_json_infile.json"
 
-    # # Delete if these files already exist
-    if os.path.exists(jsoninfile):
-        os.remove(jsoninfile)
+        # # Delete if these files already exist
+        if os.path.exists(jsoninfile):
+            os.remove(jsoninfile)
 
-    # All Submissions JSON
-    # NOTE runs in separate thread using run_in_threadpool
-    submission = await run_in_threadpool(
-        lambda: submission_crud.get_all_submissions_json(db, project_id)
-    )
+        # All Submissions JSON
+        # NOTE runs in separate thread using run_in_threadpool
+        submission = await run_in_threadpool(
+            lambda: submission_crud.get_all_submissions_json(db, project_id)
+        )
 
-    # Write the submission to a file
-    with open(jsoninfile, "w") as f:
-        f.write(json.dumps(submission))
+        # Write the submission to a file
+        with open(jsoninfile, "w") as f:
+            f.write(json.dumps(submission))
 
-    # Convert the submission to osm xml format
-    osmoutfile = await submission_crud.convert_json_to_osm(jsoninfile)
+        # Convert the submission to osm xml format
+        osmoutfile = await submission_crud.convert_json_to_osm(jsoninfile)
 
-    # Remove the extra closing </osm> tag from the end of the file
-    with open(osmoutfile, "r") as f:
-        osmoutfile_data = f.read()
+        # Remove the extra closing </osm> tag from the end of the file
+        with open(osmoutfile, "r") as f:
+            osmoutfile_data = f.read()
 
-    # Create a plain XML response
-    return Response(content=osmoutfile_data, media_type="application/xml")
+        # Create a plain XML response
+        return Response(content=osmoutfile_data, media_type="application/xml")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/submission_page/{project_id}")
@@ -325,20 +331,23 @@ async def get_submission_page(
     Returns:
         dict: A dictionary containing the submission counts for each date.
     """
-    data = await submission_crud.get_submissions_by_date(
-        db, project_id, days, planned_task
-    )
+    try:
+        data = await submission_crud.get_submissions_by_date(
+            db, project_id, days, planned_task
+        )
 
-    # Update submission cache in the background
-    background_task_id = await project_crud.insert_background_task_into_database(
-        db, "sync_submission", project_id
-    )
+        # Update submission cache in the background
+        background_task_id = await project_crud.insert_background_task_into_database(
+            db, "sync_submission", project_id
+        )
 
-    background_tasks.add_task(
-        submission_crud.update_submission_in_s3, db, project_id, background_task_id
-    )
+        background_tasks.add_task(
+            submission_crud.update_submission_in_s3, db, project_id, background_task_id
+        )
 
-    return data
+        return data 
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/submission_form_fields/{project_id}")
@@ -357,12 +366,20 @@ async def get_submission_form_fields(
     Returns:
         Any: The response from the submission form API.
     """
-    project = await project_crud.get_project(db, project_id)
-    task_list = await tasks_crud.get_task_id_list(db, project_id)
-    odk_credentials = await project_deps.get_odk_credentials(db, project_id)
-    odk_form = central_crud.get_odk_form(odk_credentials)
-    xform = f"{project.project_name_prefix}_task_{task_list[0]}"
-    return odk_form.formFields(project.odkid, xform)
+    try:
+        project = await project_crud.get_project(db, project_id)
+        task_list = await tasks_crud.get_task_id_list(db, project_id)
+        odk_credentials = await project_deps.get_odk_credentials(db, project_id)
+        odk_form = central_crud.get_odk_form(odk_credentials)
+    
+        xform = f"{project.project_name_prefix}_task_{task_list[0]}"
+
+        return odk_form.formFields(project.odkid, xform)
+    except IndexError as e:
+        raise HTTPException(
+            status_code=400, detail=f"Failed to retrieves the submission form field:{str(e)}"
+        )
+
 
 
 @router.get("/submission_table/{project_id}")
@@ -387,24 +404,27 @@ async def submission_table(
 
     task_id: The ID of the task.
     """
-    skip = (page - 1) * results_per_page
-    limit = results_per_page
-    count, data = await submission_crud.get_submission_by_project(
-        project_id, skip, limit, db, submitted_by, review_state, submitted_date
-    )
-    background_task_id = await project_crud.insert_background_task_into_database(
-        db, "sync_submission", project_id
-    )
+    try:
+        skip = (page - 1) * results_per_page
+        limit = results_per_page
+        count, data = await submission_crud.get_submission_by_project(
+            project_id, skip, limit, db, submitted_by, review_state, submitted_date
+        )
+        background_task_id = await project_crud.insert_background_task_into_database(
+            db, "sync_submission", project_id
+        )
 
-    background_tasks.add_task(
-        submission_crud.update_submission_in_s3, db, project_id, background_task_id
-    )
-    pagination = await project_crud.get_pagination(page, count, results_per_page, count)
-    response = submission_schemas.PaginatedSubmissions(
-        results=data,
-        pagination=submission_schemas.PaginationInfo(**pagination.model_dump()),
-    )
-    return response
+        background_tasks.add_task(
+            submission_crud.update_submission_in_s3, db, project_id, background_task_id
+        )
+        pagination = await project_crud.get_pagination(page, count, results_per_page, count)
+        response = submission_schemas.PaginatedSubmissions(
+            results=data,
+            pagination=submission_schemas.PaginationInfo(**pagination.model_dump()),
+        )
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @router.get("/task_submissions/{project_id}")
@@ -429,38 +449,41 @@ async def task_submissions(
 
     task_id: The ID of the task.
     """
-    skip = (page - 1) * limit
-    filters = {
-        "$top": limit,
-        "$skip": skip,
-        "$count": True,
-        "$wkt": True,
-    }
+    try:
+        skip = (page - 1) * limit
+        filters = {
+            "$top": limit,
+            "$skip": skip,
+            "$count": True,
+            "$wkt": True,
+        }
 
-    if submitted_date:
-        filters["$filter"] = (
-            "__system/submissionDate ge {}T00:00:00+00:00 "
-            "and __system/submissionDate le {}T23:59:59.999+00:00"
-        ).format(submitted_date, submitted_date)
+        if submitted_date:
+            filters["$filter"] = (
+                "__system/submissionDate ge {}T00:00:00+00:00 "
+                "and __system/submissionDate le {}T23:59:59.999+00:00"
+            ).format(submitted_date, submitted_date)
 
-    if submitted_by:
-        if "$filter" in filters:
-            filters["$filter"] += f"and (username eq '{submitted_by}')"
-        else:
-            filters["$filter"] = f"username eq '{submitted_by}'"
+        if submitted_by:
+            if "$filter" in filters:
+                filters["$filter"] += f"and (username eq '{submitted_by}')"
+            else:
+                filters["$filter"] = f"username eq '{submitted_by}'"
 
-    if review_state:
-        if "$filter" in filters:
-            filters["$filter"] += f" and (__system/reviewState eq '{review_state}')"
-        else:
-            filters["$filter"] = f"__system/reviewState eq '{review_state}'"
+        if review_state:
+            if "$filter" in filters:
+                filters["$filter"] += f" and (__system/reviewState eq '{review_state}')"
+            else:
+                filters["$filter"] = f"__system/reviewState eq '{review_state}'"
 
-    data, count = await submission_crud.get_submission_by_task(
-        project, task_id, filters, db
-    )
-    pagination = await project_crud.get_pagination(page, count, limit, count)
-    response = submission_schemas.PaginatedSubmissions(
-        results=data,
-        pagination=submission_schemas.PaginationInfo(**pagination.model_dump()),
-    )
-    return response
+        data, count = await submission_crud.get_submission_by_task(
+            project, task_id, filters, db
+        )
+        pagination = await project_crud.get_pagination(page, count, limit, count)
+        response = submission_schemas.PaginatedSubmissions(
+            results=data,
+            pagination=submission_schemas.PaginationInfo(**pagination.model_dump()),
+        )
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e

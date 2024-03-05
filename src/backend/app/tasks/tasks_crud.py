@@ -355,14 +355,17 @@ async def get_project_task_history(
     Returns:
         A list of task history records for the specified project.
     """
-    query = db.query(db_models.DbTaskHistory).filter(
-        db_models.DbTaskHistory.project_id == project_id
-    )
+    try:
+        query = db.query(db_models.DbTaskHistory).filter(
+            db_models.DbTaskHistory.project_id == project_id
+        )
 
-    if end_date:
-        query = query.filter(db_models.DbTaskHistory.action_date >= end_date)
+        if end_date:
+            query = query.filter(db_models.DbTaskHistory.action_date >= end_date)
 
-    return query.all()
+        return query.all()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 async def count_validated_and_mapped_tasks(
@@ -380,34 +383,37 @@ async def count_validated_and_mapped_tasks(
         - 'validated': The cumulative count of validated tasks.
         - 'mapped': The cumulative count of mapped tasks.
     """
-    cumulative_counts = {}
-    results = []
+    try:
+        cumulative_counts = {}
+        results = []
 
-    current_date = end_date
-    while current_date <= datetime.now():
-        date_str = current_date.strftime("%m/%d")
-        cumulative_counts = {"date": date_str, "validated": 0, "mapped": 0}
-        results.append(cumulative_counts)
-        current_date += timedelta(days=1)
+        current_date = end_date
+        while current_date <= datetime.now():
+            date_str = current_date.strftime("%m/%d")
+            cumulative_counts = {"date": date_str, "validated": 0, "mapped": 0}
+            results.append(cumulative_counts)
+            current_date += timedelta(days=1)
 
-    # Populate cumulative_counts with counts from task_history
-    for result in task_history:
-        task_status = result.action_text.split()[5]
-        date_str = result.action_date.strftime("%m/%d")
-        entry = next((entry for entry in results if entry["date"] == date_str), None)
+        # Populate cumulative_counts with counts from task_history
+        for result in task_history:
+            task_status = result.action_text.split()[5]
+            date_str = result.action_date.strftime("%m/%d")
+            entry = next((entry for entry in results if entry["date"] == date_str), None)
 
-        if entry:
-            if task_status == "VALIDATED":
-                entry["validated"] += 1
-            elif task_status == "MAPPED":
-                entry["mapped"] += 1
+            if entry:
+                if task_status == "VALIDATED":
+                    entry["validated"] += 1
+                elif task_status == "MAPPED":
+                    entry["mapped"] += 1
 
-    total_validated = 0
-    total_mapped = 0
+        total_validated = 0
+        total_mapped = 0
 
-    for entry in results:
-        total_validated += entry["validated"]
-        total_mapped += entry["mapped"]
-        entry.update({"validated": total_validated, "mapped": total_mapped})
+        for entry in results:
+            total_validated += entry["validated"]
+            total_mapped += entry["mapped"]
+            entry.update({"validated": total_validated, "mapped": total_mapped})
 
-    return results
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
